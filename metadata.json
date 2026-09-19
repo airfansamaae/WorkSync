@@ -1,0 +1,6 @@
+{
+  "name": "Academic Management System (ระบบบริหารจัดการงานวิชาการ)",
+  "description": "A complete academic management web application tailored for teachers and school administrators with task submissions, announcements, calendar, document center, recommended websites directory, and Google Workspace integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
