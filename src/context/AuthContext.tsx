@@ -124,8 +124,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     }
 
-    // Normal User Lookup
-    const user = StorageService.getUserByUsername(trimmedUser);
+    // Normal User Lookup (first check local, if not found try pulling from Google Sheets)
+    let user = StorageService.getUserByUsername(trimmedUser);
+    if (!user) {
+      await StorageService.pullFromGoogleSheets().catch(() => {});
+      reloadUsers();
+      user = StorageService.getUserByUsername(trimmedUser);
+    }
+
     if (!user) {
       const attempt = SecurityService.recordFailedAttempt(trimmedUser);
       showAlert({
@@ -229,6 +235,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     StorageService.createUser({
       username: trimmedUser,
       fullName: trimmedName,
+      email: trimmedUser.includes('@') ? trimmedUser : undefined,
       password: trimmedPass,
       role: 'member',
       status: 'pending',
@@ -236,6 +243,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     reloadUsers();
+    StorageService.syncAllNow().catch(() => {});
 
     // Show clear web alert upon registration as mandated
     showAlert({

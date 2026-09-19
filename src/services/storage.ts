@@ -447,6 +447,7 @@ export class StorageService {
         tasks: data.tasks,
         submissions: data.submissions,
         documents: data.documents,
+        notices: data.notices,
         websites: data.websites,
         users: data.users,
         settings: data.settings,
@@ -454,6 +455,175 @@ export class StorageService {
         console.warn('Auto-sync to Google Sheets background note:', err);
       });
     }, 1500);
+  }
+
+  /**
+   * Immediate manual trigger to push all current data to Google Sheets
+   */
+  static async syncAllNow(): Promise<{ success: boolean; message: string }> {
+    const data = this.loadData();
+    return GoogleDriveService.syncToGoogleSheets({
+      tasks: data.tasks,
+      submissions: data.submissions,
+      documents: data.documents,
+      notices: data.notices,
+      websites: data.websites,
+      users: data.users,
+      settings: data.settings,
+    });
+  }
+
+  /**
+   * Pull latest data from Google Sheets into local storage (enables multi-device / multi-browser sync)
+   */
+  static async pullFromGoogleSheets(): Promise<{ success: boolean; message: string; updated?: boolean }> {
+    const res = await GoogleDriveService.fetchFromGoogleSheets();
+    if (!res.success || !res.data) {
+      return { success: false, message: res.message || 'ไม่สามารถดึงข้อมูลจาก Google Sheets ได้' };
+    }
+
+    try {
+      const current = this.loadData();
+      const incoming = res.data;
+      let hasUpdates = false;
+
+      // Merge tasks
+      if (Array.isArray(incoming.tasks) && incoming.tasks.length > 0) {
+        current.tasks = incoming.tasks.map((t: any): Task => {
+          const start = String(t.startDate || t['Start Date'] || '');
+          const due = String(t.dueDate || t['Due Date'] || start);
+          return {
+            id: String(t.id || t.ID || `task-${Date.now()}`),
+            title: String(t.title || t.Title || ''),
+            description: String(t.description || t.Description || ''),
+            category: (t.category || t.Category || 'lesson_plan') as any,
+            startDate: start,
+            dueDate: due,
+            isRange: Boolean(t.isRange || (start && due && start !== due)),
+            dateRange: [start, due],
+            targetRole: (t.targetRole || t['Target Role'] || 'all') as any,
+            createdBy: String(t.createdBy || t['Created By'] || 'Admin'),
+            status: (t.status || t.Status || 'active') as any,
+            createdAt: String(t.createdAt || t['Created At'] || new Date().toISOString()),
+            updatedAt: String(t.updatedAt || t['Updated At'] || new Date().toISOString()),
+          };
+        });
+        hasUpdates = true;
+      }
+
+      // Merge submissions
+      if (Array.isArray(incoming.submissions) && incoming.submissions.length > 0) {
+        current.submissions = incoming.submissions.map((s: any): Submission => {
+          const subDate = String(s.submittedAt || s['Submitted At'] || new Date().toISOString());
+          return {
+            id: String(s.id || s['Submission ID'] || `sub-${Date.now()}`),
+            taskId: String(s.taskId || s['Task ID'] || ''),
+            userId: String(s.userId || s['User ID'] || ''),
+            userName: String(s.userName || s['Teacher Name'] || ''),
+            title: String(s.title || s.Title || ''),
+            description: String(s.description || s.Description || ''),
+            files: Array.isArray(s.files) ? s.files : [],
+            status: (s.status || s.Status || 'submitted') as any,
+            submittedAt: subDate,
+            createdAt: String(s.createdAt || subDate),
+            updatedAt: String(s.updatedAt || subDate),
+          };
+        });
+        hasUpdates = true;
+      }
+
+      // Merge documents
+      if (Array.isArray(incoming.documents) && incoming.documents.length > 0) {
+        current.documents = incoming.documents.map((d: any): DocumentItem => ({
+          id: String(d.id || d.ID || `doc-${Date.now()}`),
+          title: String(d.title || d.Title || ''),
+          category: (d.category || d.Category || 'sample') as any,
+          orderNumber: d.orderNumber || d['Order Number'],
+          description: String(d.description || d.Description || ''),
+          file: d.file || {
+            id: `file-${Date.now()}`,
+            name: String(d['File Name'] || 'Document.pdf'),
+            size: 1024000,
+            type: 'application/pdf',
+            url: String(d['Google Drive Link'] || ''),
+            uploadedAt: new Date().toISOString(),
+          },
+          uploadedBy: String(d.uploadedBy || d['Uploaded By'] || 'user-admin'),
+          createdAt: String(d.createdAt || d['Created At'] || new Date().toISOString()),
+          updatedAt: String(d.updatedAt || d['Updated At'] || new Date().toISOString()),
+        }));
+        hasUpdates = true;
+      }
+
+      // Merge notices
+      if (Array.isArray(incoming.notices) && incoming.notices.length > 0) {
+        current.notices = incoming.notices.map((n: any): Notice => {
+          const created = String(n.createdAt || n['Created At'] || new Date().toISOString());
+          return {
+            id: String(n.id || n.ID || `notice-${Date.now()}`),
+            title: String(n.title || n.Title || ''),
+            description: String(n.description || n.content || n.Content || n.Description || ''),
+            date: String(n.date || new Date().toLocaleDateString('th-TH')),
+            category: n.category || n.Category || 'general',
+            createdBy: String(n.createdBy || n.author || n.Author || 'Admin'),
+            createdAt: created,
+            updatedAt: String(n.updatedAt || created),
+            expiresAt: String(n.expiresAt || n['Expires At'] || new Date(Date.now() + 15 * 86400000).toISOString()),
+          };
+        });
+        hasUpdates = true;
+      }
+
+      // Merge websites
+      if (Array.isArray(incoming.websites) && incoming.websites.length > 0) {
+        current.websites = incoming.websites.map((w: any): WebsiteDirectory => ({
+          id: String(w.id || w.ID || `web-${Date.now()}`),
+          title: String(w.title || w.Title || ''),
+          url: String(w.url || w.URL || ''),
+          description: String(w.description || w.Description || ''),
+          logoUrl: String(w.logoUrl || `https://www.google.com/s2/favicons?domain=${encodeURIComponent(w.url || 'google.com')}&sz=128`),
+          order: Number(w.order || w.Order || 0),
+          category: w.category || w.Category,
+          createdAt: String(w.createdAt || w['Created At'] || new Date().toISOString()),
+          updatedAt: String(w.updatedAt || w['Updated At'] || new Date().toISOString()),
+        }));
+        hasUpdates = true;
+      }
+
+      // Merge users (always keeping Admin user intact)
+      if (Array.isArray(incoming.users) && incoming.users.length > 0) {
+        const mappedUsers: User[] = incoming.users.map((u: any): User => ({
+          id: String(u.id || u.ID || `user-${Date.now()}`),
+          username: String(u.username || u.Username || ''),
+          fullName: String(u.fullName || u['Full Name'] || ''),
+          role: (u.role || u.Role || 'member') as any,
+          status: (u.status || u.Status || 'active') as any,
+          department: u.department || u.Department || undefined,
+          email: u.email || u.Email || undefined,
+          createdAt: String(u.createdAt || u['Created At'] || new Date().toISOString()),
+          updatedAt: String(u.updatedAt || u['Updated At'] || new Date().toISOString()),
+        })).filter(u => u.username);
+
+        if (!mappedUsers.some(u => u.username === 'Admin')) {
+          const admin = current.users.find(u => u.username === 'Admin') || initialUsers[0];
+          mappedUsers.unshift(admin);
+        }
+        current.users = mappedUsers;
+        hasUpdates = true;
+      }
+
+      if (hasUpdates) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+      }
+
+      return {
+        success: true,
+        updated: hasUpdates,
+        message: 'อัปเดตข้อมูลจาก Google Sheets เรียบร้อยแล้ว',
+      };
+    } catch (e: any) {
+      return { success: false, message: e.message || 'เกิดข้อผิดพลาดในการนำเข้าข้อมูล' };
+    }
   }
 
   private static saveData(data: StorageData) {
@@ -476,7 +646,16 @@ export class StorageService {
   }
 
   static getUserByUsername(username: string): User | undefined {
-    return this.getUsers().find((u) => u.username.toLowerCase() === username.toLowerCase());
+    const clean = username.trim().toLowerCase();
+    return this.getUsers().find(
+      (u) =>
+        u.username.toLowerCase() === clean ||
+        (u.email && u.email.toLowerCase() === clean)
+    );
+  }
+
+  static getUserByUsernameOrEmail(identifier: string): User | undefined {
+    return this.getUserByUsername(identifier);
   }
 
   static createUser(user: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): User {
@@ -753,6 +932,12 @@ export class StorageService {
       ...updates,
       updatedAt: new Date().toISOString(),
     };
+    if (updates.googleAppsScriptUrl) {
+      GoogleDriveService.setGasUrl(updates.googleAppsScriptUrl);
+    }
+    if (updates.googleSheetId !== undefined) {
+      GoogleDriveService.setSheetId(updates.googleSheetId);
+    }
     this.saveData(data);
     return data.settings;
   }

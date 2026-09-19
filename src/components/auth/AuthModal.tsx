@@ -155,10 +155,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
               </div>
             )}
 
-            {/* Username / User ID input */}
+            {/* Username / User ID / Email input */}
             <div>
               <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
-                {isRegister ? 'ตั้งชื่อผู้ใช้ (User ID / Username) *' : 'ชื่อผู้ใช้ (User ID / Username) *'}
+                {isRegister ? 'ชื่อผู้ใช้ หรือ อีเมล (Username / Email) *' : 'ชื่อผู้ใช้ หรือ อีเมล (Username / Email) *'}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-purple-500">
@@ -169,7 +169,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   type="text"
                   required
                   autoComplete="username"
-                  placeholder="รหัสประจำตัว หรือ Username"
+                  placeholder={isRegister ? 'เช่น somchai หรือ somchai@school.ac.th' : 'รหัสประจำตัว หรือ อีเมลทุกประเภท'}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-purple-200/80 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/20 text-xs sm:text-sm transition-all shadow-2xs"

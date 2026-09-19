@@ -58,6 +58,51 @@ export default function App() {
   const [previewFile, setPreviewFile] = useState<SubmittedFile | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
+  // Cloud Sync state
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const refreshAllData = () => {
+    setSettings(StorageService.getSettings());
+    setTasks(StorageService.getTasks());
+    setSubmissions(StorageService.getSubmissions());
+    setNotices(StorageService.getNotices());
+    setDocuments(StorageService.getDocuments());
+    setWebsites(StorageService.getWebsites());
+    setAllUsers(StorageService.getUsers());
+  };
+
+  const handleManualSync = async (notify = true) => {
+    setIsSyncing(true);
+    try {
+      const pushRes = await StorageService.syncAllNow();
+      const pullRes = await StorageService.pullFromGoogleSheets();
+      refreshAllData();
+
+      if (notify) {
+        if (pushRes.success || pullRes.success) {
+          showToast('ซิงค์ข้อมูลกับ Google Sheets สำเร็จ', 'เชื่อมโยงและบันทึกข้อมูลเข้า Google Sheets เรียบร้อย', 'success');
+        } else {
+          showToast('แจ้งเตือนการเชื่อมต่อ', pushRes.message || 'โปรดตรวจสอบการวางโค้ดใน Apps Script', 'warning');
+        }
+      }
+    } catch (e: any) {
+      if (notify) {
+        showToast('การเชื่อมต่อ', e.message || 'ไม่สามารถเชื่อมต่อได้', 'error');
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Initial silent pull from Google Sheets on app load (enables any browser & machine to load latest data)
+  useEffect(() => {
+    StorageService.pullFromGoogleSheets().then((res) => {
+      if (res.updated) {
+        refreshAllData();
+      }
+    }).catch(() => {});
+  }, []);
+
   // Sync user list on user updates
   useEffect(() => {
     setAllUsers(StorageService.getUsers());
@@ -243,6 +288,8 @@ export default function App() {
         <Header
           activeTab={activeTab}
           settings={settings}
+          isSyncing={isSyncing}
+          onSync={() => handleManualSync(true)}
           onOpenSettings={() => setIsSettingsModalOpen(true)}
           onToggleMobileMenu={() => setIsMobileSidebarOpen(true)}
         />

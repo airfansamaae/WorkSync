@@ -1,4 +1,5 @@
-/**
+// โค้ด Google Apps Script (Code.gs) ฉบับสมบูรณ์ 100%
+export const APPS_SCRIPT_CODE = `/**
  * =========================================================================================
  * GOOGLE APPS SCRIPT (Code.gs) - ระบบบริหารจัดการงานวิชาการ
  * เวอร์ชันสมบูรณ์ 100%: บันทึกและซิงค์ข้อมูล Google Sheets + Google Drive
@@ -20,7 +21,7 @@ var TARGET_SPREADSHEET_ID_OR_URL = '';
 function extractSpreadsheetId(input) {
   if (!input) return '';
   var str = String(input).trim();
-  var match = str.match(/\/spreadsheets\/d\/([a-zA-Z0-9_\-]+)/);
+  var match = str.match(/\\/spreadsheets\\/d\\/([a-zA-Z0-9_\\-]+)/);
   if (match && match[1]) {
     return match[1];
   }
@@ -228,7 +229,7 @@ function syncAllData(data, customSheetId) {
           data.submissions.forEach(function(s) {
             var filesText = (s.files || []).map(function(f) {
               return f.name + ' (' + (f.url || 'Drive') + ')';
-            }).join('\n');
+            }).join('\\n');
             subSheet.appendRow([
               s.id, s.taskId, s.userId, s.userName, s.title, s.description || '', (s.files || []).length, filesText, s.status, s.submittedAt
             ]);
@@ -356,7 +357,7 @@ function saveSubmissionSafely(submission, customSheetId) {
     if (subSheet) {
       var filesText = (submission.files || []).map(function(f) {
         return f.name + ' (' + (f.url || 'Drive') + ')';
-      }).join('\n');
+      }).join('\\n');
 
       subSheet.appendRow([
         submission.id, submission.taskId, submission.userId, submission.userName, submission.title, submission.description || '', (submission.files || []).length, filesText, submission.status, submission.submittedAt
@@ -652,3 +653,4 @@ function createJsonResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
 }
+`;

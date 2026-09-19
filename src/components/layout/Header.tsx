@@ -7,18 +7,23 @@ import {
   LogOut,
   Calendar,
   Sparkles,
-  HardDrive
+  HardDrive,
+  RefreshCw
 } from 'lucide-react';
 
 interface HeaderProps {
   activeTab?: ActiveTab;
   settings: SchoolSettings;
+  isSyncing?: boolean;
+  onSync?: () => void;
   onOpenSettings: () => void;
   onToggleMobileMenu: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   settings,
+  isSyncing,
+  onSync,
   onOpenSettings,
   onToggleMobileMenu,
 }) => {
@@ -53,7 +58,23 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Right: Workspace badge + Avatar & Quick Actions */}
-      <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+      <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+        {/* Instant Cloud Sync Button */}
+        {onSync && (
+          <button
+            id="header-btn-cloud-sync"
+            type="button"
+            onClick={onSync}
+            disabled={isSyncing}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full border border-purple-200 bg-purple-50/80 hover:bg-purple-100 text-purple-700 text-xs font-semibold cursor-pointer transition-all disabled:opacity-50 shadow-2xs"
+            title="คลิกเพื่อเชื่อมโยงและซิงค์ข้อมูลทั้งหมดเข้า Google Sheets ทันที"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-purple-600' : 'text-purple-600'}`} />
+            <span className="hidden sm:inline">{isSyncing ? 'กำลังซิงค์...' : 'ซิงค์ Google Sheets'}</span>
+            <span className="sm:hidden">{isSyncing ? 'ซิงค์...' : 'ซิงค์'}</span>
+          </button>
+        )}
+
         {/* Google Workspace Connection Pill */}
         {isGoogleConnected ? (
           <div
